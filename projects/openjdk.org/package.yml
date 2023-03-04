@@ -1,0 +1,67 @@
+
+distributable:
+   url: https://github.com/openjdk/jdk19u/archive/refs/tags/jdk-{{version}}-ga.tar.gz
+   strip-components: 1
+
+versions:
+  - 19.0.2
+
+dependencies:
+  giflib.sourceforge.io: 5
+  harfbuzz.org: 7
+  libjpeg-turbo.org: 2
+  libpng.org: 1
+  littlecms.com: 2
+  info-zip.org/unzip: 6
+  zlib.net: 1
+
+build:
+  dependencies:
+    tea.xyz/gx/cc: c99
+    tea.xyz/gx/make: '*'
+    gnu.org/autoconf: 2
+    freedesktop.org/pkg-config: '*'
+    gnu.org/wget: '*'
+
+  script: |
+    mkdir -p ./build/boot_jdk
+    cd ./build/
+  
+    wget https://download.java.net/java/GA/jdk18.0.2.1/db379da656dc47308e138f21b33976fa/1/GPL/openjdk-18.0.2.1_macos-aarch64_bin.tar.gz
+    tar xf openjdk-18.0.2.1_macos-aarch64_bin.tar.gz -C boot_jdk --strip-components 2
+    
+    cd ..
+    chmod +x ./configure
+    sh ./configure $ARGS
+    make --jobs {{ hw.concurrency }} images
+    # make install
+  env: 
+    CC: clang
+    ARGS: 
+      - --prefix={{prefix}}
+      - --disable-warnings-as-errors
+      # - --with-boot-jdk-jvmargs=ENV.delete("_JAVA_OPTIONS")
+      - --with-boot-jdk=./build/boot_jdk/Contents/Home
+      - --with-debug-level=release
+      - --with-jvm-variants=server
+      - --with-native-debug-symbols=none
+      - --without-version-opt
+      - --without-version-pre
+      - --with-giflib
+      - --with-harfbuzz
+      - --with-lcms
+      - --with-libjpeg
+      - --with-libpng
+      - --with-zlib
+
+provides:
+  - bin/foo
+  # ^^ specify the binaries or tea magic won’t work
+
+test:
+  dependencies:
+    foo.com: '*'  # asterisk means “any version, usually the latest”
+  script:
+    test "$(foo --version)" = {{version}}
+  # ^^ we prefer that you test the functionality of the package works, but
+  # we know tests are tedious, so will (for now) accept a simple version check
